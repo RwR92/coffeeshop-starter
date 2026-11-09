@@ -1,4 +1,4 @@
-package ek.osnb.demo.coffeeshop.account;
+package ek.osnb.demo.coffeeshop.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
