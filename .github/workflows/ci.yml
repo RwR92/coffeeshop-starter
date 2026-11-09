@@ -42,6 +42,7 @@ jobs:
         env:
           DB_PASSWORD: ci-placeholder
           MYSQL_ROOT_PASSWORD: ci-placeholder
+          STAFF_PASSWORD: ci-placeholder
         run: |
           docker compose -f compose.dev.yaml config --quiet
           docker compose -f compose.full.yaml config --quiet

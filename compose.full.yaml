@@ -46,6 +46,7 @@ services:
       SPRING_PROFILES_ACTIVE: docker
       DB_USERNAME: ${DB_USERNAME:-coffeeshop}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      STAFF_PASSWORD: ${STAFF_PASSWORD:?Set STAFF_PASSWORD in .env}
     depends_on:
       # Wait until MySQL accepts connections, not just until its container has started
       db:
