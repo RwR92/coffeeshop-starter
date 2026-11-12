@@ -6,9 +6,6 @@ import jakarta.validation.constraints.NotNull;
 record PlaceOrderRequest(
 
         @NotNull
-        Long customerId,
-
-        @NotNull
         Long cartId
 ) {
 }

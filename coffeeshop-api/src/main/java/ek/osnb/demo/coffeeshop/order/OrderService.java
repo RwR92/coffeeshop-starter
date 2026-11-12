@@ -24,7 +24,7 @@ import java.util.Optional;
  * CustomerApi (who is ordering), CartApi (what is ordered) and CatalogApi (names,
  * prices and stock). The order itself only stores their ids, plus copies of the
  * values that must never change afterwards.
- *
+ * <p>
  * Serves two kinds of callers:
  * - OrderController (the REST API), with *Response records
  * - other features, through the public OrderApi interface, with *Info records
@@ -53,12 +53,19 @@ class OrderService implements OrderApi {
         this.events = events;
     }
 
+    private Long requireCustomerId(String email) {
+        return customers.findCustomerByEmail(email)
+                .map(CustomerInfo::id)
+                .orElseThrow(() -> new NotFoundException("No profile found"));
+    }
+
     // Everything in here happens in one transaction: if any step fails (e.g. one
     // product is out of stock), nothing is saved - no stock is taken, no order is
     // created and the cart keeps its items.
-    OrderResponse placeOrder(PlaceOrderRequest request) {
-        CustomerInfo customer = customers.getCustomer(request.customerId());
-        CartInfo cart = carts.getCart(request.cartId());
+    OrderResponse placeOrder(String email, Long cartId) {
+        CustomerInfo customer = customers.findCustomerByEmail(email)
+                .orElseThrow(() -> new ConflictException("Add your delivery details before you order"));
+        CartInfo cart = carts.getCart(cartId);
 
         if (cart.isEmpty()) {
             throw new ConflictException("The cart is empty");
@@ -101,34 +108,45 @@ class OrderService implements OrderApi {
     }
 
     @Transactional(readOnly = true)
-    List<OrderSummaryResponse> findByCustomer(Long customerId) {
-        // 404 for an unknown customer instead of an empty list
-        customers.getCustomer(customerId);
+    List<OrderSummaryResponse> findOwnOrders(String email) {
+        Optional<CustomerInfo> customer = customers.findCustomerByEmail(email);
+
+        if (customer.isEmpty()) {
+            return List.of();
+        }
 
         List<OrderSummaryResponse> summaries = new ArrayList<>();
 
-        for (Order order : repository.findByCustomerIdOrderByPlacedAtDesc(customerId)) {
+        for (Order order : repository.findByCustomerIdOrderByPlacedAtDesc(customer.get().id())) {
             summaries.add(OrderMapper.toSummary(order));
         }
-
         return summaries;
     }
 
     @Transactional(readOnly = true)
-    OrderResponse findById(Long id) {
-        return OrderMapper.toResponse(findOrder(id));
+    OrderResponse findOwnOrder(String email, Long id) {
+        return OrderMapper.toResponse(findOwnOrderEntity(email, id));
     }
 
-    OrderResponse cancel(Long id) {
-        Order order = findOrder(id);
+    OrderResponse cancelOwn(String email, Long id) {
+        Order order = findOwnOrderEntity(email, id);
         order.cancel();
 
-        // The items go back on the shelf
         for (OrderLine line : order.getLines()) {
             catalog.releaseStock(line.getProductId(), line.getQuantity());
         }
 
         return OrderMapper.toResponse(order);
+    }
+
+    private Order findOwnOrderEntity(String email, Long id) {
+        return repository.findByIdAndCustomerId(id, requireCustomerId(email))
+                .orElseThrow(() -> new NotFoundException("Order not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    OrderResponse findById(Long id) {
+        return OrderMapper.toResponse(findOrder(id));
     }
 
     OrderResponse ship(Long id) {
