@@ -123,15 +123,6 @@ class OrderService implements OrderApi {
         return summaries;
     }
 
-    @Transactional(readOnly = true)
-    List<OrderSummaryResponse> findAllOrders(){
-        List<OrderSummaryResponse> orders = new ArrayList<>();
-
-        for(Order order : repository.findAllByOrderByPlacedAtDesc()){
-            orders.add(OrderMapper.toSummary(order));
-        }
-        return orders;
-    }
 
     @Transactional(readOnly = true)
     OrderResponse findOwnOrder(String email, Long id) {
@@ -164,6 +155,16 @@ class OrderService implements OrderApi {
         order.ship();
 
         return OrderMapper.toResponse(order);
+    }
+
+    @Transactional(readOnly = true)
+    List<OrderSummaryResponse> findAllOrders(){
+        List<OrderSummaryResponse> orders = new ArrayList<>();
+
+        for(Order order : repository.findAllByOrderByPlacedAtDesc()){
+            orders.add(OrderMapper.toSummary(order));
+        }
+        return orders;
     }
 
     // ---------- OrderApi: used by other features ----------
