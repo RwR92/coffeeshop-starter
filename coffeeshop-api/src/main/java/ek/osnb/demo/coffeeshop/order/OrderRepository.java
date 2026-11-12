@@ -15,4 +15,8 @@ interface OrderRepository extends JpaRepository<Order, Long> {
     // Empty if the order doesn't exist or belongs to another customer
     @EntityGraph(attributePaths = "lines")
     Optional<Order> findByIdAndCustomerId(Long id, Long customerId);
+
+    // Every order, newest first. The lines are loaded too: the summary counts the items
+    @EntityGraph(attributePaths = "lines")
+    List<Order> findAllByOrderByPlacedAtDesc();
 }

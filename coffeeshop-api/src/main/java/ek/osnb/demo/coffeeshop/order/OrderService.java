@@ -124,6 +124,16 @@ class OrderService implements OrderApi {
     }
 
     @Transactional(readOnly = true)
+    List<OrderSummaryResponse> findAllOrders(){
+        List<OrderSummaryResponse> orders = new ArrayList<>();
+
+        for(Order order : repository.findAllByOrderByPlacedAtDesc()){
+            orders.add(OrderMapper.toSummary(order));
+        }
+        return orders;
+    }
+
+    @Transactional(readOnly = true)
     OrderResponse findOwnOrder(String email, Long id) {
         return OrderMapper.toResponse(findOwnOrderEntity(email, id));
     }
