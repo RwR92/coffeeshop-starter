@@ -20,50 +20,28 @@ class CustomerService implements CustomerApi {
 
     // ---------- Used by CustomerController ----------
 
-    CustomerResponse create(CustomerRequest request) {
-        requireEmailIsFree(request.email());
-
-        Customer customer = Customer.create(
-                request.name(),
-                request.email(),
-                request.street(),
-                request.postalCode(),
-                request.city()
-        );
-
-        return CustomerMapper.toResponse(repository.save(customer));
-    }
-
     @Transactional(readOnly = true)
-    CustomerResponse findById(Long id) {
-        return CustomerMapper.toResponse(findCustomer(id));
-    }
+    CustomerResponse findMyProfile(String email) {
+        Optional<Customer> customer = repository.findByEmail(Customer.normalizeEmail(email));
 
-    // A list with zero or one customer. A stand-in for logging in until the
-    // app has Spring Security: anyone who knows an email can find the customer.
-    @Transactional(readOnly = true)
-    List<CustomerResponse> findByEmail(String email) {
-        return repository.findByEmail(Customer.normalizeEmail(email))
-                .map(CustomerMapper::toResponse)
-                .stream()
-                .toList();
-    }
-
-    CustomerResponse update(Long id, CustomerRequest request) {
-        Customer customer = findCustomer(id);
-
-        // Changing the email is fine, but not to one another customer already uses
-        if (!customer.getEmail().equals(Customer.normalizeEmail(request.email()))) {
-            requireEmailIsFree(request.email());
+        if(customer.isEmpty()){
+            throw new NotFoundException("No profile yet");
         }
 
-        customer.updateDetails(
-                request.name(),
-                request.email(),
-                request.street(),
-                request.postalCode(),
-                request.city()
-        );
+        return CustomerMapper.toResponse(customer.get());
+    }
+
+    CustomerResponse saveMyProfile(String email, ProfileRequest request) {
+        Customer customer;
+        Optional<Customer> existing = repository.findByEmail(Customer.normalizeEmail(email));
+
+        if(existing.isPresent()){
+            customer = existing.get();
+
+            customer.updateDetails(request.name(), customer.getEmail(), request.street(), request.postalCode(), request.city());
+        }else {
+            customer = repository.save(Customer.create(request.name(), email, request.street(), request.postalCode(), request.city()));
+        }
 
         return CustomerMapper.toResponse(customer);
     }
@@ -85,12 +63,6 @@ class CustomerService implements CustomerApi {
 
         return repository.findByEmail(Customer.normalizeEmail(email))
                 .map(CustomerMapper::toInfo);
-    }
-
-    private void requireEmailIsFree(String email) {
-        if (repository.existsByEmail(Customer.normalizeEmail(email))) {
-            throw new ConflictException("A customer with this email already exists");
-        }
     }
 
     private Customer findCustomer(Long id) {
